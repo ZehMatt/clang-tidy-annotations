@@ -1,0 +1,59 @@
+name: 'clang-tidy-annotations'
+author: 'ZehMatt'
+description: 'Run clang-tidy on your code and annotates the PR with the results'
+branding:
+  icon: 'book-open'
+  color: 'yellow'
+inputs:
+  github_token:
+    description: 'Authentication token.'
+    default: ${{ github.token }}
+    required: true
+  source_dir:
+    description: 'Directory containing the source files.'
+    type: 'string'
+    default: '.'
+    required: true
+  build_dir:
+    description: 'The directory in where CMake will create the build (-B).'
+    type: 'string'
+    default: '.'
+    required: true
+  file_filter:
+    description: 'A list of file extensions, files that do not match the filter will not be passed to clang-tidy.'
+    type: 'string'
+    default: 'cpp,h,hpp,c,cc,cxx,hxx'
+    required: true
+  only_affected_lines:
+    description: 'Only annotates lines that were changed in the PR.'
+    type: 'boolean'
+    default: true
+    required: false
+  cmake_args:
+    description: 'Additional CMake arguments.'
+    type: 'string'
+    default: ''
+    required: false
+  clang_tidy_args:
+    description: 'Additional clang-tidy arguments.'
+    type: 'string'
+    default: ''
+    required: false
+  clang_tidy_file:
+    description: 'Path to .clang-tidy file.'
+    type: 'string'
+    default: '.clang-tidy'
+    required: true
+  warnings_as_errors:
+    description: 'Treats all warnings as errors.'
+    type: 'boolean'
+    default: true
+    required: false
+  fail_on_problems:
+    description: 'Fail the action if there are any problems found by clang-tidy.'
+    type: 'boolean'
+    default: true
+    required: false
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
