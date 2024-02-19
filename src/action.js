@@ -72,7 +72,7 @@ function parseClangTidyOutput(output) {
 function isLineModified(patchInfos, line) {
     for (let i = 0; i < patchInfos.length; i++) {
         const patch = patchInfos[i];
-        if (line >= patch.added[0] && line <= patch.added[1]) {
+        if (line >= patch.added[0] && line < patch.added[1]) {
             return true;
         }
     }

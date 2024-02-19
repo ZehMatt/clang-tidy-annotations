@@ -30158,15 +30158,15 @@ function parsePatch(patchData) {
         const header = lines[0];
 
         // Extract the line range from the diff chunk header
-        const match = header.match(/-(\d+),(\d+) \+(\d+),(\d+)/);
+        const match = header.match(/-(\d+),?(\d+)? \+(\d+),?(\d+)?/);
         if (match) {
             const linesRemovedStart = parseInt(match[1], 10);
-            const linesRemovedAffected = parseInt(match[2], 10);
+            const linesRemovedAffected = match[2] ? parseInt(match[2], 10) : (linesRemovedStart != 0) ? 1 : 0;
             const linesAddedStart = parseInt(match[3], 10);
-            const linesAddedAffected = parseInt(match[4], 10);
+            const linesAddedAffected = match[4] ? parseInt(match[4], 10) : (linesAddedStart != 0) ? 1 : 0;
             lineRanges.push({
-                removed: [linesRemovedStart, linesRemovedStart + linesRemovedAffected - 1],
-                added: [linesAddedStart, linesAddedStart + linesAddedAffected - 1],
+                removed: [linesRemovedStart, linesRemovedStart + linesRemovedAffected],
+                added: [linesAddedStart, linesAddedStart + linesAddedAffected],
             });
         }
     });
@@ -32206,7 +32206,7 @@ function parseClangTidyOutput(output) {
 function isLineModified(patchInfos, line) {
     for (let i = 0; i < patchInfos.length; i++) {
         const patch = patchInfos[i];
-        if (line >= patch.added[0] && line <= patch.added[1]) {
+        if (line >= patch.added[0] && line < patch.added[1]) {
             return true;
         }
     }

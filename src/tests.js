@@ -27,9 +27,27 @@ test('parseUnifiedPatch', t => {
         ' }\n' +
         ' \n' +
         ' Date Date::FromYMD(int32_t year, int32_t month, int32_t day)');
-        
+
     assert.deepEqual(parsed, [
-        { removed: [19, 29], added: [19, 33] },
-        { removed: [35, 40], added: [39, 45] }
+        { removed: [19, 30], added: [19, 34] },
+        { removed: [35, 41], added: [39, 46] }
+    ]);
+});
+
+test('parseUnifiedPatch - addition only', t => {
+    let parsed = patchParser.parse('@@ -0,0 +1 @@\n' +
+        '+#define DO_NOT_DO_THIS 1\n');
+
+    assert.deepEqual(parsed, [
+        { removed: [0, 0], added: [1, 2] },
+    ]);
+});
+
+test('parseUnifiedPatch - deletion only', t => {
+    let parsed = patchParser.parse('@@ -1 +0 @@\n' +
+        '+#define DO_NOT_DO_THIS 1\n');
+
+    assert.deepEqual(parsed, [
+        { removed: [1, 2], added: [0, 0] },
     ]);
 });
