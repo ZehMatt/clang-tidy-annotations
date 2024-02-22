@@ -35,13 +35,19 @@ function filterPRFiles(files, extensions) {
     // Debug print the files filtered by extensions
     const filteredFilesByExtData = JSON.stringify(filteredFiles, null, 4);
     core.debug(`Files filtered by extensions: ${filteredFilesByExtData}`);
-    
+
     // Only have files where the status is 'added' or 'modified'
     filteredFiles = filteredFiles.filter(file => file.status == 'added' || file.status == 'modified');
 
     // Debug print the files filtered by status
     const filteredFilesByStatusData = JSON.stringify(filteredFiles, null, 4);
     core.debug(`Files filtered by status: ${filteredFilesByStatusData}`);
+
+    // Filter out files that have no patch.
+    filteredFiles = filteredFiles.filter(file => file.patch != null);
+
+    const filteredFilesByPatchData = JSON.stringify(filteredFiles, null, 4);
+    core.debug(`Files filtered by patch: ${filteredFilesByPatchData}`);
 
     return filteredFiles;
 }
@@ -87,7 +93,7 @@ function createAnnotations(issues, onlyAffectedLines, fileInfos) {
         const filePath = issue.file.replace(`${workspacePath}/`, '');
 
         // Check if the line was modified
-        if(onlyAffectedLines) {
+        if (onlyAffectedLines) {
             const fileInfo = fileInfos[filePath];
             const patchInfos = fileInfo.patchInfos;
             if (!isLineModified(patchInfos, issue.line)) {
@@ -142,6 +148,9 @@ async function run() {
     const token = core.getInput('github_token');
     const octokit = github.getOctokit(token);
 
+    const payloadData = JSON.stringify(payload, null, 4);
+    core.debug(`Payload: ${payloadData}`);
+
     // Request modified files from the PR
     const filesResult = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
         owner: github.context.repo.owner,
@@ -158,7 +167,7 @@ async function run() {
     const filteredFilesData = JSON.stringify(files, null, 4);
     core.debug(`Filtered PR files: ${filteredFilesData}`);
 
-    if(files.length == 0) {
+    if (files.length == 0) {
         core.info('No files to check');
         return;
     }
@@ -208,10 +217,10 @@ async function run() {
         // Concatenate the clang-tidy args with the clang-tidy command.
         clangTidyCmdArgs = clangTidyCmdArgs.concat(parsedClangTidyArgs);
     }
-    if(warningsAsErrors) {
+    if (warningsAsErrors) {
         clangTidyCmdArgs.push('--warnings-as-errors=*');
     }
-    
+
     // Debug print the clang-tidy args.
     const clangTidyArgsData = JSON.stringify(clangTidyCmdArgs, null, 4);
     core.debug(`Clang-tidy args: ${clangTidyArgsData}`);
@@ -253,7 +262,7 @@ async function run() {
             }
         });
 
-        if(failOnProblems) {
+        if (failOnProblems) {
             core.setFailed('clang-tidy found issues');
         } else {
             core.warning('clang-tidy found issues');
