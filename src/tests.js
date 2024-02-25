@@ -1,9 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const patchParser = require('./patch_parser');
+const lib = require('./lib');
+const core = require('@actions/core');
+const github = require('@actions/github');
 
 test('parseUnifiedPatch', t => {
-    let parsed = patchParser.parse('@@ -19,11 +19,15 @@\n' +
+    let parsed = lib.parsePatch('@@ -19,11 +19,15 @@\n' +
         ' \n' +
         ' using namespace OpenRCT2;\n' +
         ' \n' +
@@ -35,7 +37,7 @@ test('parseUnifiedPatch', t => {
 });
 
 test('parseUnifiedPatch - addition only', t => {
-    let parsed = patchParser.parse('@@ -0,0 +1 @@\n' +
+    let parsed = lib.parsePatch('@@ -0,0 +1 @@\n' +
         '+#define DO_NOT_DO_THIS 1\n');
 
     assert.deepEqual(parsed, [
@@ -44,10 +46,41 @@ test('parseUnifiedPatch - addition only', t => {
 });
 
 test('parseUnifiedPatch - deletion only', t => {
-    let parsed = patchParser.parse('@@ -1 +0 @@\n' +
+    let parsed = lib.parsePatch('@@ -1 +0 @@\n' +
         '+#define DO_NOT_DO_THIS 1\n');
 
     assert.deepEqual(parsed, [
         { removed: [1, 2], added: [0, 0] },
     ]);
+});
+
+test('testPR21457', async t => {
+
+    const token = "";
+    const octokit = github.getOctokit(token);
+
+    const prNumber = 21457;
+    const filesResult = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
+        owner: 'OpenRCT2',
+        repo: 'OpenRCT2',
+        pull_number: prNumber
+    });
+
+    const filesFilter = "cpp,h,hpp,c,cc,cxx,hxx";
+    let files = lib.filterPRFiles(filesResult.data, filesFilter);
+
+    const filteredFilesData = JSON.stringify(files, null, 4);
+    console.log(`Filtered PR files: ${filteredFilesData}`);
+
+    if (files.length == 0) {
+        core.info('No files to check');
+        return;
+    }
+
+    let fileInfos = lib.buildFileInfos(files);
+
+    // Debug print the file infos.
+    const fileInfosData = JSON.stringify(fileInfos, null, 4);
+    console.log(`File infos: ${fileInfosData}`);
+
 });
