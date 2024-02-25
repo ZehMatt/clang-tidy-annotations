@@ -32306,7 +32306,7 @@ async function run() {
         return;
     }
 
-    let fileInfos = [];
+    let fileInfos = {};
     files.forEach(file => {
         const fileInfo = {
             filename: file.filename,
