@@ -95,7 +95,13 @@ function createAnnotations(issues, onlyAffectedLines, fileInfos) {
         // Check if the line was modified
         if (onlyAffectedLines) {
             const fileInfo = fileInfos[filePath];
+            if (fileInfo === undefined) {
+                return;
+            }
             const patchInfos = fileInfo.patchInfos;
+            if(patchInfos === undefined) {
+                return;
+            }
             if (!isLineModified(patchInfos, issue.line)) {
                 // Debug print the line that was not modified
                 core.debug(`Line ${issue.line} in file ${filePath} was not modified`);
