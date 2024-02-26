@@ -1,88 +1,21 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
-const exec = require('@actions/exec');
-const stringArgv = require('string-argv');
-const path = require('path');
-const patchParser = require('./patch_parser');
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import * as exec from '@actions/exec';
+import * as stringArgv from 'string-argv';
+import * as lib from './lib.mjs';
 
-function filterPRFiles(files, extensions) {
-    // Convert the extensions string to an array of extensions
-    const extArray = extensions.split(',');
-
-    // Convert the extensions to lowercase
-    extArray.forEach((ext, index) => {
-        extArray[index] = ext.toLowerCase();
-    });
-
-    // Debug print the filtered extensions
-    const extArrayData = extArray.toString();
-    core.debug(`Filtered Extensions: ${extArrayData}`)
-
-    // Filter the files based on their extensions
-    let filteredFiles = files.filter(file => {
-        // Extract the extension from the filename
-        let ext = path.extname(file.filename).toLowerCase();
-
-        // Remove the dot from the extension
-        if (ext.length > 0 && ext[0] === '.') {
-            ext = ext.substring(1);
-        }
-
-        // Check if the extension is in the list of extensions
-        return extArray.includes(ext);
-    });
-
-    // Debug print the files filtered by extensions
-    const filteredFilesByExtData = JSON.stringify(filteredFiles, null, 4);
-    core.debug(`Files filtered by extensions: ${filteredFilesByExtData}`);
-
-    // Only have files where the status is 'added' or 'modified'
-    filteredFiles = filteredFiles.filter(file => file.status == 'added' || file.status == 'modified');
-
-    // Debug print the files filtered by status
-    const filteredFilesByStatusData = JSON.stringify(filteredFiles, null, 4);
-    core.debug(`Files filtered by status: ${filteredFilesByStatusData}`);
-
-    // Filter out files that have no patch.
-    filteredFiles = filteredFiles.filter(file => file.patch != null);
-
-    const filteredFilesByPatchData = JSON.stringify(filteredFiles, null, 4);
-    core.debug(`Files filtered by patch: ${filteredFilesByPatchData}`);
-
-    return filteredFiles;
-}
-
-function parseClangTidyOutput(output) {
-    const lines = output.split('\n');
-    const issues = [];
-    lines.forEach(line => {
-        const match = line.match(/(.+):(\d+):(\d+): (\w+): (.+)/);
-        if (match) {
-            const file = match[1];
-            const line = match[2];
-            const column = match[3];
-            const level = match[4];
-            const message = match[5];
-            issues.push({
-                file: file,
-                line: line,
-                column: column,
-                level: level,
-                message: message
-            });
-        }
-    });
-    return issues;
-}
-
-function isLineModified(patchInfos, line) {
-    for (let i = 0; i < patchInfos.length; i++) {
-        const patch = patchInfos[i];
-        if (line >= patch.added[0] && line < patch.added[1]) {
-            return true;
-        }
+function isLineModified(fileInfos, file, line) {
+    const fileInfo = fileInfos[file];
+    if (fileInfo === undefined) {
+        return false;
     }
-    return false;
+
+    const modifiedLines = fileInfo.modifiedLines;
+    if (modifiedLines === undefined) {
+        return false;
+    }
+
+    return modifiedLines.includes(line);
 }
 
 function createAnnotations(issues, onlyAffectedLines, fileInfos) {
@@ -94,18 +27,9 @@ function createAnnotations(issues, onlyAffectedLines, fileInfos) {
 
         // Check if the line was modified
         if (onlyAffectedLines) {
-            const fileInfo = fileInfos[filePath];
-            if (fileInfo === undefined) {
-                return;
-            }
-            const patchInfos = fileInfo.patchInfos;
-            if(patchInfos === undefined) {
-                return;
-            }
-            if (!isLineModified(patchInfos, issue.line)) {
+            if (!isLineModified(fileInfos, filePath, issue.line)) {
                 // Debug print the line that was not modified
                 core.debug(`Line ${issue.line} in file ${filePath} was not modified`);
-
                 return;
             }
         }
@@ -168,7 +92,7 @@ async function run() {
     const filesData = JSON.stringify(filesResult.data, null, 4);
     core.debug(`PR files: ${filesData}`);
 
-    let files = filterPRFiles(filesResult.data, filesFilter);
+    let files = lib.filterPRFiles(filesResult.data, filesFilter);
 
     const filteredFilesData = JSON.stringify(files, null, 4);
     core.debug(`Filtered PR files: ${filteredFilesData}`);
@@ -178,14 +102,7 @@ async function run() {
         return;
     }
 
-    let fileInfos = {};
-    files.forEach(file => {
-        const fileInfo = {
-            filename: file.filename,
-            patchInfos: patchParser.parse(file.patch)
-        };
-        fileInfos[file.filename] = fileInfo;
-    });
+    const fileInfos = lib.buildFileInfos(files);
 
     // Debug print the file infos.
     const fileInfosData = JSON.stringify(fileInfos, null, 4);
