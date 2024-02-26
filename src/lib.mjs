@@ -146,7 +146,6 @@ async function getFilesInfoForPR(owner, repo, prNumber, filesFilter) {
         reason:
             "Handling an installation.deleted event (The app's access has been revoked)",
     });
-    const authentication = await auth();
     const octokit = new Octokit();
 
     const requestWithAuth = octokit.request.defaults({
