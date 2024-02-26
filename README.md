@@ -3,9 +3,9 @@ clang-tidy-annotations is a GitHub Action that can be used to annotate files on 
 with CMake based projects. This project was inspired by `clang-tidy-review` but is doing things a bit different.
 
 Instead of creating review comments it will use annotations only and has builtin support to fail the job if clang-tidy found any
-issues. clang-tidy-annotations relies on CMake as it uses [CMAKE_EXPORT_COMPILE_COMMANDS](https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html)
-instead of having the user to manually configure include paths and preprocessor definitions. It also attempts to simplify a few things
-with options provided by the action. The action also expects a `.clang-tidy` file, clang-tidy checks can be currently not set by an input, 
+issues. clang-tidy-annotations relies on `compile_commands.json`, CMake can export it using [CMAKE_EXPORT_COMPILE_COMMANDS](https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html)
+The action will look for an existing `compile_commands.json` in the build directory and if the file was not found it will invoke CMake with the provided arguments and automatically adds `-DCMAKE_EXPORT_COMPILE_COMMANDS=On`
+so you don't have to add this to the arguments. The action also expects a `.clang-tidy` in the root of the source directory, clang-tidy checks can be currently not set by an input, 
 this was done to keep the CI close as possible to the local development side.
 
 ## Limitations
@@ -44,7 +44,7 @@ In case there are multiple build configurations its best to use a matrix for eac
 - `source_dir`: Directory containing the source files.
   - default: `.`
   - required: true
-- `build_dir`: The directory in where CMake will create the build (-B).
+- `build_dir`: The directory where CMake generated the build (-B). In case compile_commands.json was not found this will bethe directory passed to CMake.
   - default: `.`
   - required: true
 - `file_filter`: A list of file extensions, files that do not match the filter will not be passed to clang-tidy.
@@ -53,7 +53,7 @@ In case there are multiple build configurations its best to use a matrix for eac
 - `only_affected_lines`: Only annotates lines that were changed in the PR.
   - default: true
   - required: false
-- `cmake_args`: Additional CMake arguments.
+- `cmake_args`: In case compile_commands.json was not found in the build directory it will invoke CMake, this should have all the required CMake arguments.
   - default: ''
   - required: false
 - `clang_tidy_args`: Additional clang-tidy arguments.

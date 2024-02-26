@@ -15,7 +15,7 @@ inputs:
     default: '.'
     required: true
   build_dir:
-    description: 'The directory where CMake generated the build (-B). In case compile_commands.json was not found in the directory this will be passed to CMake.'
+    description: 'The directory where CMake generated the build (-B). In case compile_commands.json was not found this will bethe directory passed to CMake.'
     type: 'string'
     default: '.'
     required: true
