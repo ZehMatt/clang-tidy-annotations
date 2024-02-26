@@ -155,7 +155,7 @@ async function run() {
     core.debug(`Clang-tidy output: ${clangTidyExec.stdout}`);
 
     // Parse the clang-tidy output
-    const tidyIssues = parseClangTidyOutput(clangTidyExec.stdout);
+    const tidyIssues = lib.parseClangTidyOutput(clangTidyExec.stdout);
 
     // Output via annotations
     const annotations = createAnnotations(tidyIssues, onlyAffectedLines, fileInfos);

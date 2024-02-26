@@ -33705,7 +33705,7 @@ function filterPRFiles(files, extensions) {
     return filteredFiles;
 }
 
-function lib_parseClangTidyOutput(output) {
+function parseClangTidyOutput(output) {
     const lines = output.split('\n');
     const issues = [];
     lines.forEach(line => {
