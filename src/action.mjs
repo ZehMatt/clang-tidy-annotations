@@ -158,6 +158,8 @@ async function run() {
         if (!await createCMakeBuild(sourceDir, buildDir, cmakeArgs)) {
             return;
         }
+    } else {
+        core.info('compile_commands.json was found in the build directory, using existing.');
     }
 
     // Execute clang-tidy
