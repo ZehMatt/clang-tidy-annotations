@@ -15,7 +15,7 @@ inputs:
     default: '.'
     required: true
   build_dir:
-    description: 'The directory in where CMake will create the build (-B).'
+    description: 'The directory where CMake generated the build (-B). In case compile_commands.json was not found in the directory this will be passed to CMake.'
     type: 'string'
     default: '.'
     required: true
@@ -30,7 +30,7 @@ inputs:
     default: true
     required: false
   cmake_args:
-    description: 'Additional CMake arguments.'
+    description: 'In case compile_commands.json was not found in the build directory it will invoke CMake, this should have all the required CMake arguments.'
     type: 'string'
     default: ''
     required: false

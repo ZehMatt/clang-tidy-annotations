@@ -3,6 +3,8 @@ import * as github from '@actions/github';
 import * as exec from '@actions/exec';
 import * as stringArgv from 'string-argv';
 import * as lib from './lib.mjs';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 function isLineModified(fileInfos, filePath, line) {
 
@@ -16,6 +18,7 @@ function isLineModified(fileInfos, filePath, line) {
 
     const modifiedLines = fileInfo.modifiedLines;
     if (modifiedLines === undefined) {
+        core.debug(`File ${filePath} does not have modified lines`);
         return false;
     }
 
@@ -65,6 +68,40 @@ function transformLevel(level) {
     return 'notice';
 }
 
+async function createCMakeBuild(sourceDir, buildDir, cmakeArgs) {
+    // Build the CMake arguments.
+    let cmakeCmdArgs = [sourceDir, '-B', buildDir, '-DCMAKE_EXPORT_COMPILE_COMMANDS=on'];
+    if (cmakeArgs !== undefined && cmakeArgs != '') {
+        // Split the cmake args by space otherwise it will be quoted as a single argument.
+        const parsedCMakeArgs = stringArgv.parseArgsStringToArgv(cmakeArgs);
+        // Concatenate the cmake args with the cmake command.
+        cmakeCmdArgs = cmakeCmdArgs.concat(parsedCMakeArgs);
+    }
+
+    // Print the CMake arguments.
+    const cmakeCmdArgsData = JSON.stringify(cmakeCmdArgs, null, 4);
+    core.debug(`CMake command args: ${cmakeCmdArgsData}`);
+
+    // Execute CMake.
+    const cmakeExec = await exec.getExecOutput('cmake', cmakeCmdArgs, { ignoreReturnCode: true, silent: true });
+    if (cmakeExec.exitCode != 0) {
+        core.error(cmakeExec.stderr);
+        core.setFailed('CMake configuration failed');
+        return false;
+    }
+
+    return true;
+}
+
+async function fileExists(file) {
+    try {
+        const stat = await fs.stat(file);
+        return stat.isFile();
+    } catch (err) {
+        return false;
+    }
+}
+
 async function run() {
     // Inputs.
     const buildDir = core.getInput('build_dir', { required: true });
@@ -112,26 +149,16 @@ async function run() {
     const fileInfosData = JSON.stringify(fileInfos, null, 4);
     core.debug(`File infos: ${fileInfosData}`);
 
-    // Build the CMake arguments.
-    let cmakeCmdArgs = [sourceDir, '-B', buildDir, '-DCMAKE_EXPORT_COMPILE_COMMANDS=on'];
-    if (cmakeArgs !== undefined && cmakeArgs != '') {
-        // Split the cmake args by space otherwise it will be quoted as a single argument.
-        const parsedCMakeArgs = stringArgv.parseArgsStringToArgv(cmakeArgs);
-        // Concatenate the cmake args with the cmake command.
-        cmakeCmdArgs = cmakeCmdArgs.concat(parsedCMakeArgs);
-    }
+    // Check if the compile_commands.json file exists in the build directory.
+    const compileCommandsPath = path.join(buildDir, 'compile_commands.json');
+    if (!await fileExists(compileCommandsPath)) {
+        core.info('compile_commands.json not found, creating a new CMake build');
 
-    // Execute CMake.
-    const cmakeExec = await exec.getExecOutput('cmake', cmakeCmdArgs, { ignoreReturnCode: true, silent: true });
-    if (cmakeExec.exitCode != 0) {
-        core.error(cmakeExec.stderr);
-        core.setFailed('CMake configuration failed');
-        return;
+        // Create the CMake build.
+        if (!await createCMakeBuild(sourceDir, buildDir, cmakeArgs)) {
+            return;
+        }
     }
-
-    // Build the clang-tidy arguments.
-    const cmakeCmdArgsData = JSON.stringify(cmakeCmdArgs, null, 4);
-    core.debug(`CMake command args: ${cmakeCmdArgsData}`);
 
     // Execute clang-tidy
     let clangTidyCmdArgs = ['--quiet', '-p', buildDir, `--config-file=${clangTidyFilePath}`];

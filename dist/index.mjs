@@ -33791,7 +33791,6 @@ async function getFilesInfoForPR(owner, repo, prNumber, filesFilter) {
         reason:
             "Handling an installation.deleted event (The app's access has been revoked)",
     });
-    const authentication = await auth();
     const octokit = new Octokit();
 
     const requestWithAuth = octokit.request.defaults({
@@ -33816,7 +33815,11 @@ async function getFilesInfoForPR(owner, repo, prNumber, filesFilter) {
 }
 
 
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
 ;// CONCATENATED MODULE: ./src/action.mjs
+
+
 
 
 
@@ -33835,6 +33838,7 @@ function isLineModified(fileInfos, filePath, line) {
 
     const modifiedLines = fileInfo.modifiedLines;
     if (modifiedLines === undefined) {
+        lib_core.debug(`File ${filePath} does not have modified lines`);
         return false;
     }
 
@@ -33884,6 +33888,40 @@ function transformLevel(level) {
     return 'notice';
 }
 
+async function createCMakeBuild(sourceDir, buildDir, cmakeArgs) {
+    // Build the CMake arguments.
+    let cmakeCmdArgs = [sourceDir, '-B', buildDir, '-DCMAKE_EXPORT_COMPILE_COMMANDS=on'];
+    if (cmakeArgs !== undefined && cmakeArgs != '') {
+        // Split the cmake args by space otherwise it will be quoted as a single argument.
+        const parsedCMakeArgs = parseArgsStringToArgv(cmakeArgs);
+        // Concatenate the cmake args with the cmake command.
+        cmakeCmdArgs = cmakeCmdArgs.concat(parsedCMakeArgs);
+    }
+
+    // Print the CMake arguments.
+    const cmakeCmdArgsData = JSON.stringify(cmakeCmdArgs, null, 4);
+    lib_core.debug(`CMake command args: ${cmakeCmdArgsData}`);
+
+    // Execute CMake.
+    const cmakeExec = await exec.getExecOutput('cmake', cmakeCmdArgs, { ignoreReturnCode: true, silent: true });
+    if (cmakeExec.exitCode != 0) {
+        lib_core.error(cmakeExec.stderr);
+        lib_core.setFailed('CMake configuration failed');
+        return false;
+    }
+
+    return true;
+}
+
+async function fileExists(file) {
+    try {
+        const stat = await external_node_fs_namespaceObject.stat(file);
+        return stat.isFile();
+    } catch (err) {
+        return false;
+    }
+}
+
 async function run() {
     // Inputs.
     const buildDir = lib_core.getInput('build_dir', { required: true });
@@ -33931,26 +33969,16 @@ async function run() {
     const fileInfosData = JSON.stringify(fileInfos, null, 4);
     lib_core.debug(`File infos: ${fileInfosData}`);
 
-    // Build the CMake arguments.
-    let cmakeCmdArgs = [sourceDir, '-B', buildDir, '-DCMAKE_EXPORT_COMPILE_COMMANDS=on'];
-    if (cmakeArgs !== undefined && cmakeArgs != '') {
-        // Split the cmake args by space otherwise it will be quoted as a single argument.
-        const parsedCMakeArgs = parseArgsStringToArgv(cmakeArgs);
-        // Concatenate the cmake args with the cmake command.
-        cmakeCmdArgs = cmakeCmdArgs.concat(parsedCMakeArgs);
-    }
+    // Check if the compile_commands.json file exists in the build directory.
+    const compileCommandsPath = external_node_path_namespaceObject.join(buildDir, 'compile_commands.json');
+    if (!await fileExists(compileCommandsPath)) {
+        lib_core.info('compile_commands.json not found, creating a new CMake build');
 
-    // Execute CMake.
-    const cmakeExec = await exec.getExecOutput('cmake', cmakeCmdArgs, { ignoreReturnCode: true, silent: true });
-    if (cmakeExec.exitCode != 0) {
-        lib_core.error(cmakeExec.stderr);
-        lib_core.setFailed('CMake configuration failed');
-        return;
+        // Create the CMake build.
+        if (!await createCMakeBuild(sourceDir, buildDir, cmakeArgs)) {
+            return;
+        }
     }
-
-    // Build the clang-tidy arguments.
-    const cmakeCmdArgsData = JSON.stringify(cmakeCmdArgs, null, 4);
-    lib_core.debug(`CMake command args: ${cmakeCmdArgsData}`);
 
     // Execute clang-tidy
     let clangTidyCmdArgs = ['--quiet', '-p', buildDir, `--config-file=${clangTidyFilePath}`];
