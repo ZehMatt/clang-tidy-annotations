@@ -4,9 +4,13 @@ import * as exec from '@actions/exec';
 import * as stringArgv from 'string-argv';
 import * as lib from './lib.mjs';
 
-function isLineModified(fileInfos, file, line) {
-    const fileInfo = fileInfos[file];
+function isLineModified(fileInfos, filePath, line) {
+
+    core.debug(`Checking if line ${line} in file ${filePath} was modified`);
+
+    const fileInfo = fileInfos[filePath];
     if (fileInfo === undefined) {
+        core.debug(`File ${filePath} is not in the fileInfos list`);
         return false;
     }
 

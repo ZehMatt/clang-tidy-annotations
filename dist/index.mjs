@@ -33718,8 +33718,8 @@ function parseClangTidyOutput(output) {
             const message = match[5];
             issues.push({
                 file: file,
-                line: line,
-                column: column,
+                line: parseInt(line),
+                column: parseInt(column),
                 level: level,
                 message: message
             });
@@ -33823,9 +33823,13 @@ async function getFilesInfoForPR(owner, repo, prNumber, filesFilter) {
 
 
 
-function isLineModified(fileInfos, file, line) {
-    const fileInfo = fileInfos[file];
+function isLineModified(fileInfos, filePath, line) {
+
+    lib_core.debug(`Checking if line ${line} in file ${filePath} was modified`);
+
+    const fileInfo = fileInfos[filePath];
     if (fileInfo === undefined) {
+        lib_core.debug(`File ${filePath} is not in the fileInfos list`);
         return false;
     }
 

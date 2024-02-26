@@ -73,8 +73,8 @@ function parseClangTidyOutput(output) {
             const message = match[5];
             issues.push({
                 file: file,
-                line: line,
-                column: column,
+                line: parseInt(line),
+                column: parseInt(column),
                 level: level,
                 message: message
             });
