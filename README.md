@@ -8,6 +8,8 @@ The action will look for an existing `compile_commands.json` in the build direct
 so you don't have to add this to the arguments. The action also expects a `.clang-tidy` in the root of the source directory, clang-tidy checks can be currently not set by an input, 
 this was done to keep the CI close as possible to the local development side.
 
+![Example](./.github/images/check.png)
+
 ## Limitations
 clang-tidy-annotations relies on CMake to export the configuration via [CMAKE_EXPORT_COMPILE_COMMANDS](https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html),
 additional support might be provided in the future to make it easier for a setup without CMake. The user is also responsible of providing clang-tidy in the
